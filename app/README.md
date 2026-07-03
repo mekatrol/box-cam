@@ -1,27 +1,33 @@
-# app
+# Box CAM
 
-This template should help get you started developing with Vue 3 in Vite.
+Box CAM is a browser-based CAM utility for designing finger-jointed boxes and
+drawer trays and generating GRBL-compatible NC/G-code files.
 
-## Recommended IDE Setup
+The app is a fully
+client-side (browser) static application: no server runtime, no backend API, and no hosted
+database. Projects and NC files are generated locally in the browser and can be
+saved or reopened as files.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Planned Features
 
-## Recommended Browser Setup
+- Configure outside box dimensions, material thickness, stock size, cutter size,
+  finger width, holding tabs, feeds, plunge rate, and spindle speed.
+- Generate flat layouts for drawer trays or boxes with lids.
+- Preview stock sheets, finger joints, relief cuts, holding tabs, and assembled
+  box geometry.
+- Generate plain GRBL-style NC output in millimetres.
+- Simulate generated toolpaths in the browser.
+- Save and reopen `.boxcreator.json` project files.
+- Download generated `.nc` or `.gcode` files.
+- Publish as static assets on GitHub Pages or another free static host.
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## Migration Notes
 
-## Type Support for `.vue` Imports in TS
+Codex migration guidance lives in `.codex/`:
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
+- `.codex/migration-plan.md` has the ordered implementation checklist.
+- `.codex/source-map.md` maps Python modules to TypeScript modules.
+- `.codex/verification.md` describes fixture, unit, and browser test coverage.
 
 ## Project Setup
 
@@ -70,4 +76,11 @@ npm run test:e2e -- --debug
 
 ```sh
 npm run lint
+```
+
+### Format
+
+```sh
+npm run format
+npm run format:check
 ```
