@@ -27,5 +27,7 @@ desktop-only features with browser-native equivalents:
 ## Key Files
 
 - `migration-plan.md`: ordered implementation checklist.
+- `code-architecture-guide.md`: code structure, model, CSS, theme, and comment
+  rules for migration work.
 - `source-map.md`: mapping from Python modules to TypeScript modules.
 - `verification.md`: regression and acceptance checks for the migration.

@@ -26,6 +26,7 @@ saved or reopened as files.
 Codex migration guidance lives in `.codex/`:
 
 - `.codex/migration-plan.md` has the ordered implementation checklist.
+- `.codex/code-architecture-guide.md` defines code structure and styling rules.
 - `.codex/source-map.md` maps Python modules to TypeScript modules.
 - `.codex/verification.md` describes fixture, unit, and browser test coverage.
 
