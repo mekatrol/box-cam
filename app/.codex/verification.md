@@ -38,6 +38,10 @@
 
 Use Playwright to check:
 
+- Keep the existing Playwright tests current whenever the first screen,
+  navigation, button labels, or workflow entry points change. A migration step
+  is not complete if e2e tests still assert starter Vue copy or an obsolete
+  screen.
 - App loads at desktop and mobile viewport sizes.
 - Editing a dimension updates the preview/status.
 - Generate NC enables simulation controls.

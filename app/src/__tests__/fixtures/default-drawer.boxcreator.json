@@ -1,0 +1,27 @@
+{
+  "application": "box-creator",
+  "version": 1,
+  "settings": {
+    "job_name": "finger-box",
+    "box_kind": "drawer",
+    "size_x": 160.0,
+    "size_y": 100.0,
+    "size_z": 70.0,
+    "material_thickness": 6.0,
+    "stock_width": 600.0,
+    "stock_height": 400.0,
+    "bit_diameter": 3.175,
+    "finger_width": 12.0,
+    "include_tabs": true,
+    "tab_width": 4.0,
+    "tab_height": 1.5,
+    "relief_diameter": 3.175,
+    "cut_depth_step": 1.5,
+    "safe_height": 5.0,
+    "surface_height": 0.5,
+    "feed_rate": 650,
+    "plunge_rate": 180,
+    "spindle_speed": 18000,
+    "layout_gap": 14.0
+  }
+}

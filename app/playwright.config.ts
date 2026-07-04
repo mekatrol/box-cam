@@ -102,8 +102,10 @@ export default defineConfig({
      * Use the dev server by default for faster feedback loop.
      * Use the preview server on CI for more realistic testing.
      * Playwright will re-use the local server if there is already a dev-server running.
+     * Use Vite directly locally so e2e runs do not inherit `npm run dev` opening
+     * a browser window outside Playwright's managed browser instances.
      */
-    command: process.env.CI ? 'npm run preview' : 'npm run dev',
+    command: process.env.CI ? 'npm run preview' : 'npm run dev:e2e',
     port: process.env.CI ? 4173 : 5173,
     reuseExistingServer: !process.env.CI,
   },

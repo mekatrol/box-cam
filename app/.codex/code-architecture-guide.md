@@ -128,6 +128,18 @@ src/
 ## Comments
 
 - Code must be well commented where behavior is not obvious.
+- Domain code must expand manufacturing and machine-control terms near first
+  use. For example, explain that NC means numerical control, CAM means
+  computer-aided manufacturing, and a G-code command such as `G1` means a
+  feed-rate controlled linear move.
+- Do not assume future maintainers know G-code command meanings. When comparing
+  against commands such as `G0`, `G1`, `G20`, `G21`, `G90`, `G91`, `M0`, `M3`,
+  or `M30`, add a nearby comment describing the machine behavior that matters
+  to the code.
+- Comments in ported domain logic should explain the physical manufacturing
+  reason for a rule, not only restate the expression. For example, explain why
+  final cut depth goes slightly below material thickness or why a move counts as
+  cutting only when the tool is at or below the material surface.
 - Add comments for browser behavior that is easy to misuse or forget, such as
   popover positioning, file input reset behavior, Blob download lifetimes,
   canvas coordinate transforms, animation timing, and intrinsic form behavior.
@@ -138,9 +150,15 @@ src/
 
 ## Verification Expectations
 
+- Keep existing tests up to date as part of the same change that alters the
+  behavior or visible text they cover. Do not leave starter Vue tests or
+  Playwright tests asserting obsolete copy while migrating the application.
 - Add unit tests for domain logic and data transformations.
 - Add component or browser workflow tests when UI behavior changes in a way that
   users can observe.
+- Existing unit and end-to-end tests are migration safety checks, not disposable
+  scaffold. If a test no longer describes the intended product behavior, update
+  it to the new behavior in the same commit and keep the assertion meaningful.
 - Keep migration fixtures stable. Treat fixture changes as behavior changes and
   document intentional differences.
 - Run the smallest useful verification during development, then run

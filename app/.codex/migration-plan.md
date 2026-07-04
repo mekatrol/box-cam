@@ -6,27 +6,36 @@
 
 ## 1. Baseline The Source Behavior
 
-- Record representative default outputs from the Python app:
-  - default drawer tray project JSON
-  - default generated NC
-  - box-with-lid generated NC
-  - at least one multi-sheet layout generated NC
-- Save those fixtures under the Vue app test fixture tree before porting logic.
+- [x] Record representative default outputs from the Python app:
+  - [x] default drawer tray project JSON
+  - [x] default generated NC
+  - [x] box-with-lid generated NC
+  - [x] at least one multi-sheet layout generated NC
+- [x] Save those fixtures under the Vue app test fixture tree before porting logic.
 - Treat fixture differences as intentional only when the reason is documented.
 
 ## 2. Port Core Data Types
 
-- Create TypeScript equivalents for:
-  - `BoxSettings`
-  - `Point`
-  - `Segment`
-  - `Panel`
-  - `ToolPosition`
-  - `MotionSegment`
-  - `SimulatorProgram`
-- Keep field names close to the Python names during the first port to make
+- [x] Create TypeScript equivalents for:
+  - [x] `BoxSettings`
+  - [x] `Point`
+  - [x] `Segment`
+  - [x] `Panel`
+  - [x] `ToolPosition`
+  - [x] `MotionSegment`
+  - [x] `SimulatorProgram`
+- [x] Keep field names close to the Python names during the first port to make
   regression comparison easier.
-- Add tests for default settings and `finalCutDepth`.
+- [x] Add tests for default settings and `finalCutDepth`.
+
+### Chunking Notes
+
+- First migrated chunk: source-generated fixture baselines plus core TypeScript
+  data models. Verification target: `npm run test:unit`.
+- First chunk verification passed with `npm run test:unit -- --run` and
+  `npm run build`.
+- Next chunk: port `LayoutGenerator` and add layout-only unit tests before
+  starting G-code generation.
 
 ## 3. Port Layout Generation
 
