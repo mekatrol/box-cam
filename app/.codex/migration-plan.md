@@ -1,5 +1,9 @@
 # Migration Plan
 
+## Source Application
+
+- The source application to migrate from is located at /home/dad/repos/cnc-utils/box-creator/box_creator
+
 ## 1. Baseline The Source Behavior
 
 - Record representative default outputs from the Python app:
