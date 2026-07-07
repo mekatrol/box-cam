@@ -8,7 +8,7 @@ client-side (browser) static application: no server runtime, no backend API, and
 database. Projects and NC files are generated locally in the browser and can be
 saved or reopened as files.
 
-## Planned Features
+## Features
 
 - Configure outside box dimensions, material thickness, stock size, cutter size,
   finger width, holding tabs, feeds, plunge rate, and spindle speed.
@@ -19,15 +19,13 @@ saved or reopened as files.
 - Simulate generated toolpaths in the browser.
 - Save and reopen `.boxcreator.json` project files.
 - Download generated `.nc` or `.gcode` files.
-- Publish as static assets on GitHub Pages or another free static host.
+- Build and publish as static assets on GitHub Pages or another static host.
 
-## Migration Notes
+## Project Notes
 
-Codex migration guidance lives in `.codex/`:
+Codex project guidance lives in `.codex/`:
 
-- `.codex/migration-plan.md` has the ordered implementation checklist.
 - `.codex/code-architecture-guide.md` defines code structure and styling rules.
-- `.codex/source-map.md` maps Python modules to TypeScript modules.
 - `.codex/verification.md` describes fixture, unit, and browser test coverage.
 
 ## Project Setup

@@ -1,33 +1,28 @@
-# Codex Migration Notes
+# Codex Project Notes
 
-This directory captures the migration plan for moving the original Python
-`box-creator` desktop app into this Vue 3 / TypeScript browser app.
+This directory captures project-specific implementation, architecture, and
+verification notes for the Box CAM Vue 3 / TypeScript browser app.
 
-## Source Project
+## Application
 
-- Source checkout: `/home/dad/repos/cnc-utils/box-creator`
-- Current implementation: PySide6 desktop wizard
-- Target implementation: fully client-side Vue 3 / TypeScript app built by Vite
+- Implementation: fully client-side Vue 3 / TypeScript app built by Vite
 - Runtime constraint: no server dependency after build
 
-## Target Shape
+## Current Shape
 
-The browser app should generate GRBL-style NC files for finger-jointed boxes and
-drawer trays. It should preserve the Python app's core behavior while replacing
-desktop-only features with browser-native equivalents:
+The browser app generates GRBL-style NC files for finger-jointed boxes and
+drawer trays. Project data, previews, simulation, and NC output are handled in
+the browser:
 
-- Project save/load: JSON upload/download, later optionally localStorage or
-  IndexedDB for recent work.
+- Project save/load: JSON upload/download.
 - NC output: generated in memory and downloaded as `.nc` or `.gcode`.
-- Preview: Canvas 2D or SVG first; WebGL/Three.js only if a richer 3D assembled
-  view becomes useful.
+- Preview: browser-rendered stock sheets, panel outlines, joints, relief cuts,
+  holding tabs, and assembled geometry.
 - Simulation: parse generated NC text in-browser and animate the cutter path.
 - Deployment: static build suitable for GitHub Pages.
 
 ## Key Files
 
-- `migration-plan.md`: ordered implementation checklist.
 - `code-architecture-guide.md`: code structure, model, CSS, theme, and comment
-  rules for migration work.
-- `source-map.md`: mapping from Python modules to TypeScript modules.
-- `verification.md`: regression and acceptance checks for the migration.
+  rules for ongoing work.
+- `verification.md`: regression and acceptance checks for the app.

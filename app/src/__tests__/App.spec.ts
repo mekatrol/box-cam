@@ -4,8 +4,10 @@ import { mount } from '@vue/test-utils';
 import App from '../App.vue';
 
 describe('App', () => {
-  it('mounts renders properly', () => {
+  it('mounts the CAM workspace', () => {
     const wrapper = mount(App);
-    expect(wrapper.text()).toContain('You did it!');
+    expect(wrapper.get('h1').text()).toBe('Box CAM');
+    expect(wrapper.text()).toContain('Generate NC');
+    expect(wrapper.text()).toContain('5 panels ready');
   });
 });
