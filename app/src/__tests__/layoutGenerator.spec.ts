@@ -28,6 +28,19 @@ const expectCleanNominalCorner = (panel: Panel, corner: Point): void => {
   expect(nextPoint?.x === corner.x || nextPoint?.y === corner.y).toBe(true);
 };
 
+const hasHorizontalSegment = (panel: Panel, y: number, startX: number, endX: number): boolean => {
+  return panel.outline.some((point, index) => {
+    const nextPoint = panel.outline[index + 1];
+    if (nextPoint === undefined) {
+      return false;
+    }
+
+    const segmentStartX = Math.min(point.x, nextPoint.x);
+    const segmentEndX = Math.max(point.x, nextPoint.x);
+    return point.y === y && nextPoint.y === y && segmentStartX === startX && segmentEndX === endX;
+  });
+};
+
 describe('layout generator', () => {
   it('creates the default drawer panels in Python order', () => {
     const panels = generateLayout(createDefaultBoxSettings());
@@ -73,10 +86,10 @@ describe('layout generator', () => {
     expect(frontPanel).toBeDefined();
     expect(frontPanel?.outline.slice(0, 6)).toEqual([
       { x: 1.5875, y: 1.5875 },
-      { x: 21.5875, y: 1.5875 },
-      { x: 21.5875, y: 7.5875 },
-      { x: 41.5875, y: 7.5875 },
-      { x: 41.5875, y: 1.5875 },
+      { x: 21.5125, y: 1.5875 },
+      { x: 21.5125, y: 7.5875 },
+      { x: 41.6625, y: 7.5875 },
+      { x: 41.6625, y: 1.5875 },
       { x: 61.5875, y: 1.5875 }
     ]);
     expect(frontPanel?.relief_points.length).toBeGreaterThan(0);
@@ -129,6 +142,49 @@ describe('layout generator', () => {
     for (const fingerWidth of topEdgeFingerWidths) {
       expect(fingerWidth).toBeCloseTo(bottomPanel.width / 3.0);
     }
+  });
+
+  it('uses the same active intervals for mating tab and slot edges', () => {
+    const settings = createSettings({
+      size_x: 60.0,
+      size_y: 42.0,
+      size_z: 40.0,
+      finger_width: 20.0
+    });
+    const panels = generateLayout(settings);
+    const frontPanel = panels.find((panel) => panel.name === 'front');
+    const bottomPanel = panels.find((panel) => panel.name === 'bottom');
+
+    expect(frontPanel).toBeDefined();
+    expect(bottomPanel).toBeDefined();
+    if (frontPanel === undefined || bottomPanel === undefined) {
+      throw new Error('Expected front and bottom panels to be generated');
+    }
+
+    const activeIntervalStartX = 20.0;
+    const activeIntervalEndX = 40.0;
+    const slotIntervalStartX = activeIntervalStartX - settings.fit_clearance_mm * 0.5;
+    const slotIntervalEndX = activeIntervalEndX + settings.fit_clearance_mm * 0.5;
+
+    // The front top edge is a receiving slot, so the active middle interval
+    // cuts inward from the nominal top edge. The bottom top edge is a tab, so
+    // the same middle interval protrudes outward for the rotated mating part.
+    expect(
+      hasHorizontalSegment(
+        frontPanel,
+        frontPanel.origin_y + settings.material_thickness,
+        frontPanel.origin_x + slotIntervalStartX,
+        frontPanel.origin_x + slotIntervalEndX
+      )
+    ).toBe(true);
+    expect(
+      hasHorizontalSegment(
+        bottomPanel,
+        bottomPanel.origin_y - settings.material_thickness,
+        bottomPanel.origin_x + activeIntervalStartX,
+        bottomPanel.origin_x + activeIntervalEndX
+      )
+    ).toBe(true);
   });
 
   it('packs panels onto additional stock sheets when required', () => {

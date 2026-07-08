@@ -9,7 +9,7 @@
 /* global CanvasRenderingContext2D, HTMLCanvasElement, ResizeObserver, window */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { finalCutDepth, type BoxSettings } from '@/domain/boxSettings';
+import { effectiveReliefDiameter, finalCutDepth, type BoxSettings } from '@/domain/boxSettings';
 import { isBoundingEdge, tabCountForSegment } from '@/domain/gcodeGenerator';
 import { type Panel, type Point, panelBounds } from '@/domain/geometry';
 import {
@@ -146,7 +146,8 @@ const drawPanel = (
   context.fill();
   context.stroke();
 
-  if (panel.relief_points.length === 0 || props.settings.relief_diameter <= 0.0) {
+  const reliefDiameter = effectiveReliefDiameter(props.settings);
+  if (panel.relief_points.length === 0 || reliefDiameter <= 0.0) {
     return;
   }
   context.save();
@@ -154,8 +155,7 @@ const drawPanel = (
   context.fillStyle = '#101820';
   context.strokeStyle = '#e8871e';
   context.lineWidth = 1.1;
-  const radius =
-    Math.max(props.settings.relief_diameter, props.settings.bit_diameter) * transform.scale * 0.5;
+  const radius = reliefDiameter * transform.scale * 0.5;
   for (const reliefPoint of panel.relief_points) {
     const mapped = mapPoint(reliefPoint, transform);
     context.beginPath();

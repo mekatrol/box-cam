@@ -1,4 +1,4 @@
-import { finalCutDepth, type BoxSettings } from './boxSettings';
+import { effectiveReliefDiameter, finalCutDepth, type BoxSettings } from './boxSettings';
 import type { Panel, Point, Segment } from './geometry';
 import { panelBounds } from './geometry';
 
@@ -82,9 +82,60 @@ const writePanelProfiles = (lines: string[], panels: Panel[], settings: BoxSetti
     const targetDepth = finalCutDepth(settings);
     while (currentDepth > targetDepth) {
       currentDepth = Math.max(currentDepth - settings.cut_depth_step, targetDepth);
+      writeReliefPass(lines, panel, currentDepth, settings);
       writeProfilePass(lines, panel, currentDepth, settings);
     }
   }
+};
+
+const writeReliefPass = (
+  lines: string[],
+  panel: Panel,
+  depth: number,
+  settings: BoxSettings
+): void => {
+  const reliefDiameter = effectiveReliefDiameter(settings);
+  if (reliefDiameter <= 0.0 || panel.relief_points.length === 0) {
+    return;
+  }
+
+  lines.push(`(inside corner relief with ${formatMillimetres(reliefDiameter)} mm diameter)`);
+  for (const reliefPoint of panel.relief_points) {
+    writeReliefCut(lines, reliefPoint, reliefDiameter, depth, settings);
+  }
+};
+
+const writeReliefCut = (
+  lines: string[],
+  reliefPoint: Point,
+  reliefDiameter: number,
+  depth: number,
+  settings: BoxSettings
+): void => {
+  const toolpathRadius = Math.max(0.0, (reliefDiameter - settings.bit_diameter) * 0.5);
+  const start = point(reliefPoint.x + toolpathRadius, reliefPoint.y);
+  lines.push(
+    `G0 X${formatMillimetres(start.x)} Y${formatMillimetres(start.y)}`,
+    `G0 Z${formatMillimetres(settings.surface_height)}`,
+    `G1 Z${formatMillimetres(depth)} F${settings.plunge_rate.toFixed(0)}`
+  );
+
+  if (toolpathRadius <= 0.0001) {
+    lines.push(`G0 Z${formatMillimetres(settings.safe_height)}`);
+    return;
+  }
+
+  lines.push(`G1 F${settings.feed_rate.toFixed(0)}`);
+  const segmentCount = 16;
+  for (let index = 1; index <= segmentCount; index += 1) {
+    const angle = (Math.PI * 2.0 * index) / segmentCount;
+    lines.push(
+      `G1 X${formatMillimetres(reliefPoint.x + Math.cos(angle) * toolpathRadius)} Y${formatMillimetres(
+        reliefPoint.y + Math.sin(angle) * toolpathRadius
+      )}`
+    );
+  }
+  lines.push(`G0 Z${formatMillimetres(settings.safe_height)}`);
 };
 
 const writeProfilePass = (

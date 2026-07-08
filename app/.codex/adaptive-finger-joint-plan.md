@@ -28,7 +28,7 @@ CNC-cuttable.
 
 ## Chunk 1: Edge Plan Model
 
-Status: pending
+Status: complete
 
 Create a small domain model for resolved joint layout before generating panel
 outlines.
@@ -46,9 +46,13 @@ outlines.
 - Unit-test short, exact, and uneven lengths so the odd-count rule is locked
   before outline generation changes.
 
+Implemented in `src/domain/fingerJointPlan.ts` and covered by
+`src/__tests__/fingerJointPlan.spec.ts`. `layoutGenerator` now consumes the
+shared spacing helper while preserving the current generated outline behavior.
+
 ## Chunk 2: Shared Spacing Across Mating Edges
 
-Status: pending
+Status: complete
 
 Build a box-level resolver that maps each physical joint run to all panel edges
 that must share pitch.
@@ -66,9 +70,14 @@ that must share pitch.
 - Add tests that compare extracted boundary positions for each mating pair,
   including variable `size_x`, `size_y`, and `size_z` values.
 
+Implemented as the initial `createFingerJointPlan` resolver, which resolves one
+shared spacing for each physical X, Y, and Z dimension and lists the panel edges
+that consume each run. `layoutGenerator` now receives those shared spacings
+instead of recomputing spacing independently per edge.
+
 ## Chunk 3: Rotation And Phase Contract
 
-Status: pending
+Status: complete
 
 Make the interlock phase explicit instead of relying on local edge order.
 
@@ -81,9 +90,14 @@ Make the interlock phase explicit instead of relying on local edge order.
 - Add tests for all four corners to prove the first and last intervals mate
   correctly after rotation.
 
+Implemented the first explicit phase contract with `jointFeaturePhase` and
+`isJointFeatureInterval`. `layoutGenerator` now asks the resolved spacing
+whether each interval is an active joint feature, then applies the edge mode to
+turn that same interval into either a protruding tab or a receiving slot.
+
 ## Chunk 4: CNC Relief Strategy
 
-Status: pending
+Status: complete
 
 Turn relief handling into an explicit CNC contract.
 
@@ -99,9 +113,16 @@ Turn relief handling into an explicit CNC contract.
 - Update preview rendering if the chosen relief style needs more than point
   markers.
 
+Implemented as inside-corner relief cuts emitted before each profile pass.
+Relief diameter now resolves through `effectiveReliefDiameter`, so any positive
+relief setting is at least the cutter diameter and larger user values are
+preserved. The generated NC uses only `G0` and `G1` moves by approximating
+larger circular reliefs with linear segments, keeping the existing simulator
+compatible.
+
 ## Chunk 5: Kerf And Fit Clearance
 
-Status: pending
+Status: complete
 
 Add fit clearance as a first-class setting before changing generated NC.
 
@@ -117,9 +138,15 @@ Add fit clearance as a first-class setting before changing generated NC.
 - Update project JSON fixtures only when the behavior change is intentional and
   documented.
 
+Implemented `fit_clearance_mm` as a first-class setting with a `0.15` mm
+default. Clearance widens receiving slot intervals by the configured total
+amount while leaving tab intervals nominal, so mating edge spacing remains
+aligned but assembly has deliberate fit allowance. The project JSON fixture and
+NC fixtures were regenerated for this intentional behavior change.
+
 ## Chunk 6: UI, Fixtures, And Acceptance
 
-Status: pending
+Status: complete
 
 Expose the behavior without making the CAM controls ambiguous.
 
@@ -134,12 +161,19 @@ Expose the behavior without making the CAM controls ambiguous.
   - `npm run test:unit -- --run`;
   - `npm run build`.
 
-## Open Decisions
+Implemented the UI label change from exact finger width to target finger width
+and added a fit-clearance input. Existing settings coercion keeps old project
+JSON files loadable by falling back to the new default. Fixtures now include
+clearance and generated relief toolpaths.
 
-- Whether odd rounding should prefer the nearest odd count, always round up to
-  keep fingers no wider than target, or enforce min/max finger pitch limits.
-- Whether the relief style should be dog-bone, T-bone, or user-selectable.
-- Whether clearance should widen only receiving slots or split the allowance
-  between tabs and slots.
-- Whether very small panels should allow one finger interval or continue to
-  reject/clamp at three intervals.
+## Resolved Decisions
+
+- Odd rounding preserves the current behavior: round to the nearest interval
+  count, bump even counts upward, and clamp to at least three intervals.
+- Reliefs are fixed inside-corner clearance cuts. Positive relief diameters are
+  never smaller than the cutter diameter, and larger user-entered diameters are
+  emitted as linearized circular `G1` toolpaths.
+- Fit clearance widens receiving slots only. Tabs remain nominal so the
+  clearance amount directly describes assembled looseness.
+- Very small panels continue to clamp to three intervals rather than switching
+  to a one-interval special case.

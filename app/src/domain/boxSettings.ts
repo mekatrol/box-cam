@@ -12,6 +12,7 @@ export interface BoxSettings {
   stock_height: number;
   bit_diameter: number;
   finger_width: number;
+  fit_clearance_mm: number;
   include_tabs: boolean;
   tab_width: number;
   tab_height: number;
@@ -37,6 +38,7 @@ export const createDefaultBoxSettings = (): BoxSettings => {
     stock_height: 400.0,
     bit_diameter: 3.175,
     finger_width: 12.0,
+    fit_clearance_mm: 0.15,
     include_tabs: true,
     tab_width: 4.0,
     tab_height: 1.5,
@@ -55,4 +57,13 @@ export const finalCutDepth = (settings: Pick<BoxSettings, 'material_thickness'>)
   // Cut slightly past the nominal material thickness so real stock separates
   // cleanly even when the spoilboard or sheet thickness is not perfectly flat.
   return -(settings.material_thickness + 0.35);
+};
+
+export const effectiveReliefDiameter = (
+  settings: Pick<BoxSettings, 'bit_diameter' | 'relief_diameter'>
+): number => {
+  if (settings.relief_diameter <= 0.0) {
+    return 0.0;
+  }
+  return Math.max(settings.relief_diameter, settings.bit_diameter);
 };

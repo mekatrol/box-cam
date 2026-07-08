@@ -1,4 +1,11 @@
-import type { BoxSettings } from './boxSettings';
+import { effectiveReliefDiameter, type BoxSettings } from './boxSettings';
+import {
+  createFingerJointPlan,
+  type FingerJointPlan,
+  type FingerJointSpacing,
+  isJointFeatureInterval,
+  type PanelEdgeName
+} from './fingerJointPlan';
 import type { Panel, Point } from './geometry';
 import { panelBounds } from './geometry';
 
@@ -7,8 +14,13 @@ enum EdgeMode {
   Tab
 }
 
-type EdgeName = 'top' | 'right' | 'bottom' | 'left';
 type PanelEdgeModes = [EdgeMode, EdgeMode, EdgeMode, EdgeMode];
+type PanelEdgeSpacings = [
+  FingerJointSpacing,
+  FingerJointSpacing,
+  FingerJointSpacing,
+  FingerJointSpacing
+];
 
 const createPoint = (x: number, y: number): Point => {
   return { x, y };
@@ -22,6 +34,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
   const xSize = settings.size_x;
   const ySize = settings.size_y;
   const zSize = settings.size_z;
+  const fingerJointPlan = createFingerJointPlan(settings);
   // Each panel edge is described clockwise as top, right, bottom, left. Matching
   // box edges must use opposite geometry: a tabbed edge protrudes by material
   // thickness, while the mating slot edge cuts inward by the same amount.
@@ -31,6 +44,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
       xSize,
       zSize,
       [EdgeMode.Slot, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Slot],
+      edgeSpacings(fingerJointPlan, 'x', 'z', 'x', 'z'),
       settings
     ),
     createPanel(
@@ -38,6 +52,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
       xSize,
       zSize,
       [EdgeMode.Slot, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Slot],
+      edgeSpacings(fingerJointPlan, 'x', 'z', 'x', 'z'),
       settings
     ),
     createPanel(
@@ -45,6 +60,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
       ySize,
       zSize,
       [EdgeMode.Tab, EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Tab],
+      edgeSpacings(fingerJointPlan, 'y', 'z', 'y', 'z'),
       settings
     ),
     createPanel(
@@ -52,6 +68,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
       ySize,
       zSize,
       [EdgeMode.Tab, EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Tab],
+      edgeSpacings(fingerJointPlan, 'y', 'z', 'y', 'z'),
       settings
     )
   ];
@@ -63,6 +80,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
         xSize,
         ySize,
         [EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab],
+        edgeSpacings(fingerJointPlan, 'x', 'y', 'x', 'y'),
         settings
       ),
       createPanel(
@@ -70,6 +88,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
         xSize,
         ySize,
         [EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Slot],
+        edgeSpacings(fingerJointPlan, 'x', 'y', 'x', 'y'),
         settings
       )
     );
@@ -80,6 +99,7 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
         xSize,
         ySize,
         [EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab],
+        edgeSpacings(fingerJointPlan, 'x', 'y', 'x', 'y'),
         settings
       )
     );
@@ -93,7 +113,7 @@ const placePanelsOnStock = (panels: Panel[], settings: BoxSettings): void => {
   const stockWidth = settings.stock_width;
   const stockHeight = settings.stock_height;
   const sheetGap = settings.layout_gap * 2.0;
-  const margin = Math.max(settings.bit_diameter, settings.relief_diameter) * 0.5;
+  const margin = Math.max(settings.bit_diameter, effectiveReliefDiameter(settings)) * 0.5;
   let cursorX = margin;
   let cursorY = margin;
   let rowHeight = 0.0;
@@ -147,17 +167,23 @@ const createPanel = (
   width: number,
   height: number,
   edgeModes: PanelEdgeModes,
+  edgeSpacing: PanelEdgeSpacings,
   settings: BoxSettings
 ): Panel => {
   const [top, right, bottom, left] = edgeModes;
+  const [topSpacing, rightSpacing, bottomSpacing, leftSpacing] = edgeSpacing;
   // The outline is generated clockwise from the nominal top-left corner. Each
   // edge helper returns its starting point, so every appended edge drops that
   // duplicate start point to avoid zero-length segments in the cutter path.
   const outline = [createPoint(0.0, 0.0)];
-  outline.push(...horizontalEdge(0.0, 0.0, width, 'top', top, settings).slice(1));
-  outline.push(...verticalEdge(width, 0.0, height, 'right', right, settings).slice(1));
-  outline.push(...horizontalEdge(width, height, -width, 'bottom', bottom, settings).slice(1));
-  outline.push(...verticalEdge(0.0, height, -height, 'left', left, settings).slice(1));
+  outline.push(...horizontalEdge(0.0, 0.0, width, 'top', top, topSpacing, settings).slice(1));
+  outline.push(
+    ...verticalEdge(width, 0.0, height, 'right', right, rightSpacing, settings).slice(1)
+  );
+  outline.push(
+    ...horizontalEdge(width, height, -width, 'bottom', bottom, bottomSpacing, settings).slice(1)
+  );
+  outline.push(...verticalEdge(0.0, height, -height, 'left', left, leftSpacing, settings).slice(1));
 
   const firstPoint = outline[0];
   const lastPoint = outline[outline.length - 1];
@@ -190,30 +216,32 @@ const horizontalEdge = (
   startX: number,
   y: number,
   length: number,
-  edgeName: EdgeName,
+  edgeName: PanelEdgeName,
   mode: EdgeMode,
+  spacing: FingerJointSpacing,
   settings: BoxSettings
 ): Point[] => {
   const sign = length >= 0.0 ? 1.0 : -1.0;
   // Horizontal top fingers protrude upward on the drawing, which is negative Y
   // in the layout coordinate system. Bottom fingers protrude downward.
   const normal = edgeName === 'top' ? -1.0 : 1.0;
-  return fingerEdge(startX, y, length, sign, 0.0, 0.0, normal, mode, settings);
+  return fingerEdge(startX, y, length, sign, 0.0, 0.0, normal, mode, spacing, settings);
 };
 
 const verticalEdge = (
   x: number,
   startY: number,
   length: number,
-  edgeName: EdgeName,
+  edgeName: PanelEdgeName,
   mode: EdgeMode,
+  spacing: FingerJointSpacing,
   settings: BoxSettings
 ): Point[] => {
   const sign = length >= 0.0 ? 1.0 : -1.0;
   // Vertical right fingers protrude toward positive X. Left fingers protrude
   // toward negative X so the outside of the panel remains outside the box.
   const normal = edgeName === 'right' ? 1.0 : -1.0;
-  return fingerEdge(x, startY, length, 0.0, sign, normal, 0.0, mode, settings);
+  return fingerEdge(x, startY, length, 0.0, sign, normal, 0.0, mode, spacing, settings);
 };
 
 const fingerEdge = (
@@ -225,28 +253,32 @@ const fingerEdge = (
   normalX: number,
   normalY: number,
   mode: EdgeMode,
+  spacing: FingerJointSpacing,
   settings: BoxSettings
 ): Point[] => {
   const run = Math.abs(length);
-  // Finger count is odd so the alternating pattern starts and ends on the same
-  // interval type. The full side is divided by this count, which keeps every
-  // finger on that edge exactly the same width, including the corner fingers.
-  let fingerCount = Math.max(3, Math.round(run / Math.max(settings.finger_width, 1.0)));
-  if (fingerCount % 2 === 0) {
-    fingerCount += 1;
-  }
-  const pitch = run / fingerCount;
+  const fingerCount = spacing.fingerIntervalCount;
+  const pitch = spacing.resolvedFingerPitchMm;
   const depth = settings.material_thickness;
+  const halfSlotClearance = Math.max(settings.fit_clearance_mm, 0.0) * 0.5;
   const points = [createPoint(startX, startY)];
 
   for (let index = 0; index < fingerCount; index += 1) {
-    const alongA = index * pitch;
-    const alongB = (index + 1) * pitch;
-    // Index parity defines the joint phase. The first interval stays on the
-    // nominal edge; the next interval is the actual finger/slot. This avoids
-    // special corner sizing while still alternating along the whole side.
-    const isFingerInterval = index % 2 === 1;
-    const offset = isFingerInterval ? (mode === EdgeMode.Tab ? depth : -depth) : 0.0;
+    // The spacing phase is defined against the physical box edge. Tab and slot
+    // edges use the same active intervals; the edge mode turns those intervals
+    // into either protruding fingers or receiving recesses after rotation.
+    const hasJointFeature = isJointFeatureInterval(index, spacing.jointFeaturePhase);
+    const [alongA, alongB] = intervalBounds(
+      index,
+      fingerCount,
+      pitch,
+      run,
+      mode,
+      spacing,
+      halfSlotClearance,
+      hasJointFeature
+    );
+    const offset = hasJointFeature ? (mode === EdgeMode.Tab ? depth : -depth) : 0.0;
     const pointA = createPoint(
       startX + directionX * alongA + normalX * offset,
       startY + directionY * alongA + normalY * offset
@@ -270,8 +302,58 @@ const fingerEdge = (
   return points;
 };
 
+const intervalBounds = (
+  index: number,
+  fingerCount: number,
+  pitch: number,
+  run: number,
+  mode: EdgeMode,
+  spacing: FingerJointSpacing,
+  halfSlotClearance: number,
+  hasJointFeature: boolean
+): [number, number] => {
+  let alongA = index * pitch;
+  let alongB = (index + 1) * pitch;
+  if (mode !== EdgeMode.Slot || halfSlotClearance <= 0.0) {
+    return [alongA, alongB];
+  }
+
+  if (hasJointFeature) {
+    alongA = Math.max(0.0, alongA - halfSlotClearance);
+    alongB = Math.min(run, alongB + halfSlotClearance);
+  } else {
+    const previousIsSlot =
+      index > 0 && isJointFeatureInterval(index - 1, spacing.jointFeaturePhase);
+    const nextIsSlot =
+      index < fingerCount - 1 && isJointFeatureInterval(index + 1, spacing.jointFeaturePhase);
+    if (previousIsSlot) {
+      alongA = Math.min(run, alongA + halfSlotClearance);
+    }
+    if (nextIsSlot) {
+      alongB = Math.max(0.0, alongB - halfSlotClearance);
+    }
+  }
+
+  return alongA <= alongB ? [alongA, alongB] : [(alongA + alongB) * 0.5, (alongA + alongB) * 0.5];
+};
+
+const edgeSpacings = (
+  fingerJointPlan: FingerJointPlan,
+  topAxis: keyof FingerJointPlan,
+  rightAxis: keyof FingerJointPlan,
+  bottomAxis: keyof FingerJointPlan,
+  leftAxis: keyof FingerJointPlan
+): PanelEdgeSpacings => {
+  return [
+    fingerJointPlan[topAxis].spacing,
+    fingerJointPlan[rightAxis].spacing,
+    fingerJointPlan[bottomAxis].spacing,
+    fingerJointPlan[leftAxis].spacing
+  ];
+};
+
 const reliefPoints = (panel: Panel, settings: BoxSettings): Point[] => {
-  if (settings.relief_diameter <= 0.0) {
+  if (effectiveReliefDiameter(settings) <= 0.0) {
     return [];
   }
 

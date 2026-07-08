@@ -12,6 +12,7 @@
     "stock_height": 400.0,
     "bit_diameter": 3.175,
     "finger_width": 12.0,
+    "fit_clearance_mm": 0.15,
     "include_tabs": true,
     "tab_width": 4.0,
     "tab_height": 1.5,

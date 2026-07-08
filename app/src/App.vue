@@ -214,7 +214,12 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 import PreviewCanvas from '@/components/preview/PreviewCanvas.vue';
-import { createDefaultBoxSettings, finalCutDepth, type BoxSettings } from '@/domain/boxSettings';
+import {
+  createDefaultBoxSettings,
+  effectiveReliefDiameter,
+  finalCutDepth,
+  type BoxSettings
+} from '@/domain/boxSettings';
 import { generateGcode } from '@/domain/gcodeGenerator';
 import { generateLayout } from '@/domain/layoutGenerator';
 import { parseNcProgram, type MotionSegment, type SimulatorProgram } from '@/domain/ncSimulator';
@@ -322,7 +327,8 @@ const materialFields: NumberField[] = [
 ];
 
 const jointFields: NumberField[] = [
-  { key: 'finger_width', label: 'Finger width (mm)' },
+  { key: 'finger_width', label: 'Target finger width (mm)' },
+  { key: 'fit_clearance_mm', label: 'Fit clearance (mm)' },
   { key: 'layout_gap', label: 'Layout gap (mm)' }
 ];
 
@@ -395,9 +401,8 @@ const scaledSimulationSegments = computed<MotionSegment[]>(() => {
 
 const refreshLayout = (): void => {
   try {
-    if (settings.relief_diameter <= 0.0) {
-      settings.relief_diameter = settings.bit_diameter;
-    }
+    settings.fit_clearance_mm = Math.max(0.0, settings.fit_clearance_mm);
+    settings.relief_diameter = effectiveReliefDiameter(settings);
     panels.value = generateLayout(settings);
     layoutError.value = '';
   } catch (error) {
