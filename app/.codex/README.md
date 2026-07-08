@@ -25,4 +25,6 @@ the browser:
 
 - `code-architecture-guide.md`: code structure, model, CSS, theme, and comment
   rules for ongoing work.
+- `adaptive-finger-joint-plan.md`: implementation plan for shared adaptive
+  odd-count finger spacing, rotation phase, reliefs, and fit clearance.
 - `verification.md`: regression and acceptance checks for the app.

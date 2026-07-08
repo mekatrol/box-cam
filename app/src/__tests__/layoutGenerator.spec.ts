@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createDefaultBoxSettings, type BoxSettings } from '../domain/boxSettings';
-import { panelBounds } from '../domain/geometry';
+import { type Panel, type Point, panelBounds } from '../domain/geometry';
 import { generateLayout } from '../domain/layoutGenerator';
 
 const createSettings = (overrides: Partial<BoxSettings> = {}): BoxSettings => {
@@ -9,6 +9,23 @@ const createSettings = (overrides: Partial<BoxSettings> = {}): BoxSettings => {
     ...createDefaultBoxSettings(),
     ...overrides
   };
+};
+
+const pointsEqual = (first: Point, second: Point): boolean => {
+  return first.x === second.x && first.y === second.y;
+};
+
+const expectCleanNominalCorner = (panel: Panel, corner: Point): void => {
+  const cornerIndex = panel.outline.findIndex((point) => pointsEqual(point, corner));
+  expect(cornerIndex).toBeGreaterThanOrEqual(0);
+
+  const previousPoint = panel.outline[cornerIndex - 1] ?? panel.outline[panel.outline.length - 2];
+  const nextPoint = panel.outline[cornerIndex + 1] ?? panel.outline[1];
+
+  expect(previousPoint).toBeDefined();
+  expect(nextPoint).toBeDefined();
+  expect(previousPoint?.x === corner.x || previousPoint?.y === corner.y).toBe(true);
+  expect(nextPoint?.x === corner.x || nextPoint?.y === corner.y).toBe(true);
 };
 
 describe('layout generator', () => {
@@ -63,6 +80,55 @@ describe('layout generator', () => {
       { x: 61.5875, y: 1.5875 }
     ]);
     expect(frontPanel?.relief_points.length).toBeGreaterThan(0);
+  });
+
+  it('keeps tabbed panel corners as cuttable nominal corners', () => {
+    const settings = createSettings({
+      size_x: 62.0,
+      size_y: 42.0,
+      finger_width: 20.0
+    });
+    const bottomPanel = generateLayout(settings).find((panel) => panel.name === 'bottom');
+
+    expect(bottomPanel).toBeDefined();
+    if (bottomPanel === undefined) {
+      throw new Error('Expected bottom panel to be generated');
+    }
+
+    const corners = [
+      { x: bottomPanel.origin_x, y: bottomPanel.origin_y },
+      { x: bottomPanel.origin_x + bottomPanel.width, y: bottomPanel.origin_y },
+      { x: bottomPanel.origin_x + bottomPanel.width, y: bottomPanel.origin_y + bottomPanel.height },
+      { x: bottomPanel.origin_x, y: bottomPanel.origin_y + bottomPanel.height }
+    ];
+
+    for (const corner of corners) {
+      expectCleanNominalCorner(bottomPanel, corner);
+    }
+
+    const topEdgeXPositions = Array.from(
+      new Set(
+        bottomPanel.outline
+          .filter(
+            (point) =>
+              point.y === bottomPanel.origin_y ||
+              point.y === bottomPanel.origin_y - settings.material_thickness
+          )
+          .map((point) => point.x - bottomPanel.origin_x)
+      )
+    ).sort((first, second) => first - second);
+    const topEdgeFingerWidths = topEdgeXPositions.slice(1).map((position, index) => {
+      const previousPosition = topEdgeXPositions[index];
+      if (previousPosition === undefined) {
+        throw new Error('Expected previous finger boundary');
+      }
+      return position - previousPosition;
+    });
+
+    expect(topEdgeFingerWidths).toHaveLength(3);
+    for (const fingerWidth of topEdgeFingerWidths) {
+      expect(fingerWidth).toBeCloseTo(bottomPanel.width / 3.0);
+    }
   });
 
   it('packs panels onto additional stock sheets when required', () => {

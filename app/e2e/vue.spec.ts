@@ -10,8 +10,9 @@ test('generates and downloads a simulated NC job', async ({ page }) => {
   await expect(page.getByText('Unsaved changes')).toBeVisible()
 
   await page.getByRole('button', { name: 'Generate NC' }).click()
-  await expect(page.getByLabel('Generated NC output').locator('textarea')).toContainText('G21')
-  await expect(page.getByLabel('Generated NC output').locator('textarea')).toContainText('M30')
+  const generatedNcOutput = page.getByLabel('Generated NC output').locator('textarea')
+  await expect(generatedNcOutput).toHaveValue(/G21/)
+  await expect(generatedNcOutput).toHaveValue(/M30/)
   await expect(page.getByText(/NC ready, \d+ simulated moves/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Run' }).click()
@@ -21,9 +22,9 @@ test('generates and downloads a simulated NC job', async ({ page }) => {
 
   const projectDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Save Project' }).click()
-  await expect(await projectDownload).toHaveSuggestedFilename('finger-box.boxcreator.json')
+  expect((await projectDownload).suggestedFilename()).toBe('finger-box.boxcreator.json')
 
   const ncDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Save NC' }).click()
-  await expect(await ncDownload).toHaveSuggestedFilename('finger-box.nc')
+  expect((await ncDownload).suggestedFilename()).toBe('finger-box.nc')
 })

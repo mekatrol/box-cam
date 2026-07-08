@@ -19,7 +19,7 @@ const createSettings = (overrides: Partial<BoxSettings> = {}): BoxSettings => {
 };
 
 describe('gcode generator', () => {
-  it('matches the Python default drawer fixture', () => {
+  it('matches the default drawer fixture', () => {
     const settings = createDefaultBoxSettings();
 
     expect(generateGcode(generateLayout(settings), settings)).toBe(
@@ -27,13 +27,13 @@ describe('gcode generator', () => {
     );
   });
 
-  it('matches the Python box-with-lid fixture', () => {
+  it('matches the box-with-lid fixture', () => {
     const settings = createSettings({ job_name: 'finger-box-with-lid', box_kind: 'box' });
 
     expect(generateGcode(generateLayout(settings), settings)).toBe(fixtureText('box-with-lid.nc'));
   });
 
-  it('matches the Python multi-sheet fixture and includes sheet pauses', () => {
+  it('matches the multi-sheet fixture and includes sheet pauses', () => {
     const settings = createSettings({
       job_name: 'finger-box-multi-sheet',
       stock_width: 210.0,

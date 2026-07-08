@@ -9,6 +9,13 @@
   - default drawer panel count and panel names
   - box-with-lid panel count and panel names
   - panel bounds are finite and non-empty
+  - adaptive finger layout keeps mating edges on the same odd interval count
+    and resolved pitch
+  - tab and slot phase remains inverted for rotated mating edges
+  - bottom and lid panel edge spacing matches the wall edges they receive
+  - relief cuts are generated only for CNC-blocking inside corners
+  - fit clearance changes slot/tab dimensions without breaking nominal edge
+    alignment
   - stock packing creates extra sheets when required
   - impossible panel dimensions throw
 - `gcodeGenerator`

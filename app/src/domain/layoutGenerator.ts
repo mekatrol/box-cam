@@ -2,8 +2,13 @@ import type { BoxSettings } from './boxSettings';
 import type { Panel, Point } from './geometry';
 import { panelBounds } from './geometry';
 
-type EdgeMode = 'slot' | 'tab';
+enum EdgeMode {
+  Slot,
+  Tab
+}
+
 type EdgeName = 'top' | 'right' | 'bottom' | 'left';
+type PanelEdgeModes = [EdgeMode, EdgeMode, EdgeMode, EdgeMode];
 
 const createPoint = (x: number, y: number): Point => {
   return { x, y };
@@ -17,20 +22,67 @@ export const generateLayout = (settings: BoxSettings): Panel[] => {
   const xSize = settings.size_x;
   const ySize = settings.size_y;
   const zSize = settings.size_z;
+  // Each panel edge is described clockwise as top, right, bottom, left. Matching
+  // box edges must use opposite geometry: a tabbed edge protrudes by material
+  // thickness, while the mating slot edge cuts inward by the same amount.
   const panels = [
-    createPanel('front', xSize, zSize, ['slot', 'tab', 'tab', 'slot'], settings),
-    createPanel('back', xSize, zSize, ['slot', 'tab', 'tab', 'slot'], settings),
-    createPanel('left', ySize, zSize, ['tab', 'slot', 'slot', 'tab'], settings),
-    createPanel('right', ySize, zSize, ['tab', 'slot', 'slot', 'tab'], settings)
+    createPanel(
+      'front',
+      xSize,
+      zSize,
+      [EdgeMode.Slot, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Slot],
+      settings
+    ),
+    createPanel(
+      'back',
+      xSize,
+      zSize,
+      [EdgeMode.Slot, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Slot],
+      settings
+    ),
+    createPanel(
+      'left',
+      ySize,
+      zSize,
+      [EdgeMode.Tab, EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Tab],
+      settings
+    ),
+    createPanel(
+      'right',
+      ySize,
+      zSize,
+      [EdgeMode.Tab, EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Tab],
+      settings
+    )
   ];
 
   if (settings.box_kind === 'box') {
     panels.push(
-      createPanel('bottom', xSize, ySize, ['tab', 'tab', 'tab', 'tab'], settings),
-      createPanel('top', xSize, ySize, ['slot', 'slot', 'slot', 'slot'], settings)
+      createPanel(
+        'bottom',
+        xSize,
+        ySize,
+        [EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab],
+        settings
+      ),
+      createPanel(
+        'top',
+        xSize,
+        ySize,
+        [EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Slot, EdgeMode.Slot],
+        settings
+      )
     );
   } else {
-    panels.push(createPanel('bottom', xSize, ySize, ['tab', 'tab', 'tab', 'tab'], settings));
+    panels.push(
+      createPanel(
+        'bottom',
+        xSize,
+        ySize,
+        [EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab, EdgeMode.Tab],
+        settings
+      )
+    );
   }
 
   placePanelsOnStock(panels, settings);
@@ -50,6 +102,9 @@ const placePanelsOnStock = (panels: Panel[], settings: BoxSettings): void => {
   const stockOriginY = 0.0;
 
   for (const panel of panels) {
+    // Panel bounds include protruding fingers, so packing uses the actual cut
+    // outline rather than nominal width and height. The margin keeps the cutter
+    // radius and relief drill diameter away from the physical stock edge.
     const bounds = panelBounds(panel);
     const panelWidth = bounds.max_x - bounds.min_x;
     const panelHeight = bounds.max_y - bounds.min_y;
@@ -63,12 +118,16 @@ const placePanelsOnStock = (panels: Panel[], settings: BoxSettings): void => {
     }
 
     if (cursorX > margin && cursorX + panelWidth + margin > stockWidth) {
+      // Start a new row when the next panel would cross the right-hand stock
+      // margin. Row height is based on the tallest outline in the current row.
       cursorX = margin;
       cursorY += rowHeight + settings.layout_gap;
       rowHeight = 0.0;
     }
 
     if (cursorY > margin && cursorY + panelHeight + margin > stockHeight) {
+      // Additional stock sheets are laid out to the right in one continuous
+      // coordinate space. G-code generation later emits pauses per sheet.
       stockIndex += 1;
       stockOriginX += stockWidth + sheetGap;
       cursorX = margin;
@@ -87,10 +146,13 @@ const createPanel = (
   name: string,
   width: number,
   height: number,
-  edgeModes: [EdgeMode, EdgeMode, EdgeMode, EdgeMode],
+  edgeModes: PanelEdgeModes,
   settings: BoxSettings
 ): Panel => {
   const [top, right, bottom, left] = edgeModes;
+  // The outline is generated clockwise from the nominal top-left corner. Each
+  // edge helper returns its starting point, so every appended edge drops that
+  // duplicate start point to avoid zero-length segments in the cutter path.
   const outline = [createPoint(0.0, 0.0)];
   outline.push(...horizontalEdge(0.0, 0.0, width, 'top', top, settings).slice(1));
   outline.push(...verticalEdge(width, 0.0, height, 'right', right, settings).slice(1));
@@ -103,6 +165,8 @@ const createPanel = (
     throw new Error(`Cannot create ${name} panel with an empty outline`);
   }
   if (!pointsEqual(lastPoint, firstPoint)) {
+    // Explicitly close the polygon. Downstream relief detection, drawing, and
+    // cutter-offset code all expect the first and last outline points to match.
     outline.push(firstPoint);
   }
 
@@ -131,6 +195,8 @@ const horizontalEdge = (
   settings: BoxSettings
 ): Point[] => {
   const sign = length >= 0.0 ? 1.0 : -1.0;
+  // Horizontal top fingers protrude upward on the drawing, which is negative Y
+  // in the layout coordinate system. Bottom fingers protrude downward.
   const normal = edgeName === 'top' ? -1.0 : 1.0;
   return fingerEdge(startX, y, length, sign, 0.0, 0.0, normal, mode, settings);
 };
@@ -144,6 +210,8 @@ const verticalEdge = (
   settings: BoxSettings
 ): Point[] => {
   const sign = length >= 0.0 ? 1.0 : -1.0;
+  // Vertical right fingers protrude toward positive X. Left fingers protrude
+  // toward negative X so the outside of the panel remains outside the box.
   const normal = edgeName === 'right' ? 1.0 : -1.0;
   return fingerEdge(x, startY, length, 0.0, sign, normal, 0.0, mode, settings);
 };
@@ -160,7 +228,10 @@ const fingerEdge = (
   settings: BoxSettings
 ): Point[] => {
   const run = Math.abs(length);
-  let fingerCount = Math.max(3, Math.ceil(run / Math.max(settings.finger_width, 1.0)));
+  // Finger count is odd so the alternating pattern starts and ends on the same
+  // interval type. The full side is divided by this count, which keeps every
+  // finger on that edge exactly the same width, including the corner fingers.
+  let fingerCount = Math.max(3, Math.round(run / Math.max(settings.finger_width, 1.0)));
   if (fingerCount % 2 === 0) {
     fingerCount += 1;
   }
@@ -171,9 +242,11 @@ const fingerEdge = (
   for (let index = 0; index < fingerCount; index += 1) {
     const alongA = index * pitch;
     const alongB = (index + 1) * pitch;
-    const isRaised = index % 2 === 0;
-    let offset = (mode === 'tab' && isRaised) || (mode === 'slot' && !isRaised) ? depth : 0.0;
-    offset *= mode === 'tab' ? 1.0 : -1.0;
+    // Index parity defines the joint phase. The first interval stays on the
+    // nominal edge; the next interval is the actual finger/slot. This avoids
+    // special corner sizing while still alternating along the whole side.
+    const isFingerInterval = index % 2 === 1;
+    const offset = isFingerInterval ? (mode === EdgeMode.Tab ? depth : -depth) : 0.0;
     const pointA = createPoint(
       startX + directionX * alongA + normalX * offset,
       startY + directionY * alongA + normalY * offset

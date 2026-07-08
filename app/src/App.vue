@@ -238,14 +238,67 @@ interface ProjectPayload {
   output_path?: string;
 }
 
+type PreviewMode = 'flat' | 'box' | 'material' | 'joints' | 'tabs' | 'generate' | 'simulate';
+
+const coerceSettings = (data: Partial<BoxSettings> | undefined): BoxSettings => {
+  const defaults = createDefaultBoxSettings();
+  const next = { ...defaults };
+  if (data === undefined) {
+    return next;
+  }
+  for (const key of Object.keys(defaults) as Array<keyof BoxSettings>) {
+    const value = data[key];
+    const current = defaults[key];
+    if (value === undefined) {
+      continue;
+    }
+    if (typeof current === 'boolean') {
+      (next[key] as boolean) = Boolean(value);
+    } else if (typeof current === 'number') {
+      (next[key] as number) = Number(value);
+    } else if (key === 'box_kind') {
+      next.box_kind = value === 'box' ? 'box' : 'drawer';
+    } else {
+      (next[key] as string) = String(value);
+    }
+  }
+  return next;
+};
+
+const loadStoredSettings = (): BoxSettings => {
+  try {
+    const stored = window.localStorage.getItem('box-cam-settings');
+    return stored === null
+      ? createDefaultBoxSettings()
+      : coerceSettings(JSON.parse(stored) as Partial<BoxSettings>);
+  } catch {
+    return createDefaultBoxSettings();
+  }
+};
+
+const loadStoredPreviewMode = (): PreviewMode => {
+  const stored = window.localStorage.getItem('box-cam-preview-mode');
+  return stored === 'box' ||
+    stored === 'material' ||
+    stored === 'joints' ||
+    stored === 'tabs' ||
+    stored === 'generate' ||
+    stored === 'simulate'
+    ? stored
+    : 'flat';
+};
+
+const loadStoredSimulationSpeed = (): number => {
+  const stored = Number(window.localStorage.getItem('box-cam-simulation-speed') ?? 100);
+  return Number.isFinite(stored) ? Math.max(10, Math.min(400, stored)) : 100;
+};
+
 const settings = reactive<BoxSettings>(loadStoredSettings());
 const panels = ref(generateLayout(settings));
 const layoutError = ref('');
 const generatedNcText = ref('');
 const isDirty = ref(false);
-const previewMode = ref<'flat' | 'box' | 'material' | 'joints' | 'tabs' | 'generate' | 'simulate'>(
-  loadStoredPreviewMode()
-);
+const previewMode = ref<PreviewMode>(loadStoredPreviewMode());
 const simulationProgram = ref<SimulatorProgram>({ segments: [], total_seconds: 0.0 });
 const simulationElapsedSeconds = ref(0.0);
 const simulationSpeedPercent = ref(loadStoredSimulationSpeed());
@@ -501,71 +554,13 @@ const confirmDiscardChanges = (): boolean => {
   return !isDirty.value || window.confirm('This project has unsaved changes. Discard them?');
 };
 
-function coerceSettings(data: Partial<BoxSettings> | undefined): BoxSettings {
-  const defaults = createDefaultBoxSettings();
-  const next = { ...defaults };
-  if (data === undefined) {
-    return next;
-  }
-  for (const key of Object.keys(defaults) as Array<keyof BoxSettings>) {
-    const value = data[key];
-    const current = defaults[key];
-    if (value === undefined) {
-      continue;
-    }
-    if (typeof current === 'boolean') {
-      (next[key] as boolean) = Boolean(value);
-    } else if (typeof current === 'number') {
-      (next[key] as number) = Number(value);
-    } else if (key === 'box_kind') {
-      next.box_kind = value === 'box' ? 'box' : 'drawer';
-    } else {
-      (next[key] as string) = String(value);
-    }
-  }
-  return next;
-}
-
-function isProjectPayload(value: ProjectPayload | Partial<BoxSettings>): value is ProjectPayload {
+const isProjectPayload = (
+  value: ProjectPayload | Partial<BoxSettings>
+): value is ProjectPayload => {
   return 'settings' in value;
-}
+};
 
-function loadStoredSettings(): BoxSettings {
-  try {
-    const stored = window.localStorage.getItem('box-cam-settings');
-    return stored === null
-      ? createDefaultBoxSettings()
-      : coerceSettings(JSON.parse(stored) as Partial<BoxSettings>);
-  } catch {
-    return createDefaultBoxSettings();
-  }
-}
-
-function loadStoredPreviewMode():
-  | 'flat'
-  | 'box'
-  | 'material'
-  | 'joints'
-  | 'tabs'
-  | 'generate'
-  | 'simulate' {
-  const stored = window.localStorage.getItem('box-cam-preview-mode');
-  return stored === 'box' ||
-    stored === 'material' ||
-    stored === 'joints' ||
-    stored === 'tabs' ||
-    stored === 'generate' ||
-    stored === 'simulate'
-    ? stored
-    : 'flat';
-}
-
-function loadStoredSimulationSpeed(): number {
-  const stored = Number(window.localStorage.getItem('box-cam-simulation-speed') ?? 100);
-  return Number.isFinite(stored) ? Math.max(10, Math.min(400, stored)) : 100;
-}
-
-function storePreferences(): void {
+const storePreferences = (): void => {
   try {
     window.localStorage.setItem('box-cam-settings', JSON.stringify({ ...settings }));
     window.localStorage.setItem('box-cam-preview-mode', previewMode.value);
@@ -573,7 +568,7 @@ function storePreferences(): void {
   } catch {
     return;
   }
-}
+};
 
 const formatDuration = (seconds: number): string => {
   const wholeSeconds = Math.max(0, Math.floor(seconds));
