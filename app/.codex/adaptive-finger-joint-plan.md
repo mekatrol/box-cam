@@ -7,7 +7,8 @@ CNC-cuttable.
 ## Goals
 
 - Use a target finger size as a preference, not a fixed pitch.
-- Resolve every box edge to an odd integer interval count.
+- Resolve every box edge to an interval count that gives an odd number of
+  active fingers centered on the edge.
 - Share the resolved pitch across every pair of mating edges.
 - Preserve opposite tab/slot phases so panels interlock after rotation.
 - Keep bottom and lid edges orientation-safe for all four walls.
@@ -40,8 +41,10 @@ outlines.
 - Define one source of truth for odd-count selection:
   - divide nominal edge length by target finger width;
   - round to the nearest integer;
-  - force the result to an odd integer;
-  - clamp to the minimum practical odd count, currently `3`;
+  - force the result to the next count that leaves nominal material at both
+    corners and puts an active finger at the edge center (`3`, `7`, `11`,
+    `15`, and so on);
+  - clamp to the minimum practical centered count, currently `3`;
   - derive exact pitch from nominal edge length divided by that count.
 - Unit-test short, exact, and uneven lengths so the odd-count rule is locked
   before outline generation changes.
@@ -168,8 +171,9 @@ clearance and generated relief toolpaths.
 
 ## Resolved Decisions
 
-- Odd rounding preserves the current behavior: round to the nearest interval
-  count, bump even counts upward, and clamp to at least three intervals.
+- Centered odd-finger rounding uses interval counts of `3`, `7`, `11`, `15`,
+  and so on. This keeps nominal material at both corners, places one active
+  finger on the edge center, and mirrors paired fingers on both sides.
 - Reliefs are fixed inside-corner clearance cuts. Positive relief diameters are
   never smaller than the cutter diameter, and larger user-entered diameters are
   emitted as linearized circular `G1` toolpaths.

@@ -41,6 +41,22 @@ const hasHorizontalSegment = (panel: Panel, y: number, startX: number, endX: num
   });
 };
 
+const horizontalSegmentsAtY = (panel: Panel, y: number): Array<[number, number]> => {
+  const segments: Array<[number, number]> = [];
+  for (const [index, point] of panel.outline.entries()) {
+    const nextPoint = panel.outline[index + 1];
+    if (nextPoint === undefined || point.y !== y || nextPoint.y !== y) {
+      continue;
+    }
+
+    segments.push([
+      Math.min(point.x, nextPoint.x) - panel.origin_x,
+      Math.max(point.x, nextPoint.x) - panel.origin_x
+    ]);
+  }
+  return segments;
+};
+
 describe('layout generator', () => {
   it('creates the default drawer panels in Python order', () => {
     const panels = generateLayout(createDefaultBoxSettings());
@@ -185,6 +201,35 @@ describe('layout generator', () => {
         bottomPanel.origin_x + activeIntervalEndX
       )
     ).toBe(true);
+  });
+
+  it('centers finger intervals so each edge side mirrors the other', () => {
+    const settings = createSettings({
+      size_x: 101.0,
+      size_y: 42.0,
+      finger_width: 18.0
+    });
+    const bottomPanel = generateLayout(settings).find((panel) => panel.name === 'bottom');
+
+    expect(bottomPanel).toBeDefined();
+    if (bottomPanel === undefined) {
+      throw new Error('Expected bottom panel to be generated');
+    }
+
+    const protrudingTopFingerSegments = horizontalSegmentsAtY(
+      bottomPanel,
+      bottomPanel.origin_y - settings.material_thickness
+    );
+
+    expect(protrudingTopFingerSegments).toHaveLength(3);
+    const [leftFinger, centerFinger, rightFinger] = protrudingTopFingerSegments;
+    if (leftFinger === undefined || centerFinger === undefined || rightFinger === undefined) {
+      throw new Error('Expected left, center, and right finger segments');
+    }
+
+    expect(leftFinger[0]).toBeCloseTo(bottomPanel.width - rightFinger[1]);
+    expect(leftFinger[1]).toBeCloseTo(bottomPanel.width - rightFinger[0]);
+    expect(centerFinger[0] + centerFinger[1]).toBeCloseTo(bottomPanel.width);
   });
 
   it('packs panels onto additional stock sheets when required', () => {

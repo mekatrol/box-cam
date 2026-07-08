@@ -16,11 +16,11 @@ describe('finger joint plan', () => {
     expect(spacing.jointFeaturePhase).toBe('startsOnNominalEdge');
   });
 
-  it('bumps even rounded counts upward to preserve existing finger sizing behavior', () => {
+  it('bumps counts upward until the edge has a centered odd finger count', () => {
     const spacing = resolveFingerJointSpacing(80.0, 20.0);
 
-    expect(spacing.fingerIntervalCount).toBe(5);
-    expect(spacing.resolvedFingerPitchMm).toBeCloseTo(16.0);
+    expect(spacing.fingerIntervalCount).toBe(7);
+    expect(spacing.resolvedFingerPitchMm).toBeCloseTo(80.0 / 7.0);
   });
 
   it('clamps very short edges to the minimum practical odd interval count', () => {
@@ -71,5 +71,18 @@ describe('finger joint plan', () => {
     expect(isJointFeatureInterval(0, 'startsWithJointFeature')).toBe(true);
     expect(isJointFeatureInterval(1, 'startsWithJointFeature')).toBe(false);
     expect(isJointFeatureInterval(2, 'startsWithJointFeature')).toBe(true);
+  });
+
+  it('keeps the default phase centered with mirrored active finger intervals', () => {
+    const spacing = resolveFingerJointSpacing(160.0, 12.0);
+    const activeIntervalIndexes = Array.from(
+      { length: spacing.fingerIntervalCount },
+      (_, index) => index
+    ).filter((index) => isJointFeatureInterval(index, spacing.jointFeaturePhase));
+    const centerIndex = (spacing.fingerIntervalCount - 1) * 0.5;
+
+    expect(spacing.fingerIntervalCount).toBe(15);
+    expect(activeIntervalIndexes).toContain(centerIndex);
+    expect(activeIntervalIndexes).toEqual([1, 3, 5, 7, 9, 11, 13]);
   });
 });

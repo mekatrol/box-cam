@@ -312,8 +312,9 @@ const intervalBounds = (
   halfSlotClearance: number,
   hasJointFeature: boolean
 ): [number, number] => {
-  let alongA = index * pitch;
-  let alongB = (index + 1) * pitch;
+  const [centeredAlongA, centeredAlongB] = centeredIntervalBounds(index, fingerCount, pitch, run);
+  let alongA = centeredAlongA;
+  let alongB = centeredAlongB;
   if (mode !== EdgeMode.Slot || halfSlotClearance <= 0.0) {
     return [alongA, alongB];
   }
@@ -335,6 +336,30 @@ const intervalBounds = (
   }
 
   return alongA <= alongB ? [alongA, alongB] : [(alongA + alongB) * 0.5, (alongA + alongB) * 0.5];
+};
+
+const centeredIntervalBounds = (
+  index: number,
+  fingerCount: number,
+  pitch: number,
+  run: number
+): [number, number] => {
+  const edgeCenter = run * 0.5;
+  const centerIntervalIndex = (fingerCount - 1) * 0.5;
+  const start = edgeCenter + (index - centerIntervalIndex - 0.5) * pitch;
+  const end = edgeCenter + (index - centerIntervalIndex + 0.5) * pitch;
+  return [clampToEdge(start, run), clampToEdge(end, run)];
+};
+
+const clampToEdge = (position: number, run: number): number => {
+  const tolerance = 0.000000001;
+  if (Math.abs(position) < tolerance) {
+    return 0.0;
+  }
+  if (Math.abs(position - run) < tolerance) {
+    return run;
+  }
+  return position;
 };
 
 const edgeSpacings = (

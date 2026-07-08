@@ -39,14 +39,15 @@ export const resolveFingerJointSpacing = (
   const positiveEdgeLengthMm = Math.abs(nominalEdgeLengthMm);
   const safeTargetFingerWidthMm = Math.max(targetFingerWidthMm, minimumTargetFingerWidthMm);
 
-  // Finger joints need an odd interval count so the physical corner condition
-  // at one end of an edge matches the other end. The current CAM behavior bumps
-  // an even rounded count upward, which avoids wider-than-requested fingers.
+  // Finger joints need a centered active interval and matching nominal corner
+  // intervals so both halves of an edge are true mirrors. Valid interval counts
+  // are 3, 7, 11, and so on: one center finger, paired fingers moving outward,
+  // and nominal material at both corners.
   let fingerIntervalCount = Math.max(
     minimumFingerIntervalCount,
     Math.round(positiveEdgeLengthMm / safeTargetFingerWidthMm)
   );
-  if (fingerIntervalCount % 2 === 0) {
+  while (!hasCenteredOddFingerCount(fingerIntervalCount)) {
     fingerIntervalCount += 1;
   }
 
@@ -57,6 +58,10 @@ export const resolveFingerJointSpacing = (
     resolvedFingerPitchMm: positiveEdgeLengthMm / fingerIntervalCount,
     jointFeaturePhase: defaultJointFeaturePhase
   };
+};
+
+const hasCenteredOddFingerCount = (fingerIntervalCount: number): boolean => {
+  return fingerIntervalCount % 4 === 3;
 };
 
 export const isJointFeatureInterval = (
